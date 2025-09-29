@@ -10,3 +10,66 @@ data/
 __pycache__/
 01_scraper/venv/
 01_scraper/venv/
+# -----------------------------
+# Python & Virtualenv
+# -----------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.sqlite3
+*.db
+*.log
+*.csv
+*.tsv
+
+# Virtual environment folders
+venv/
+ENV/
+env/
+.venv/
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# -----------------------------
+# System files
+# -----------------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+# IDE & Editor settings
+# -----------------------------
+.vscode/
+.idea/
+
+# -----------------------------
+# Node / Playwright binaries
+# -----------------------------
+node_modules/
+playwright/.cache/
+**/driver/node
+
+# -----------------------------
+# Large data or downloads
+# -----------------------------
+data/
+downloads/
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.mp4
+*.mkv
+*.avi
+*.wav
+*.mp3
+
+# -----------------------------
+# Dash / Build artifacts
+# -----------------------------
+build/
+dist/
+*.egg-info/
