@@ -1,9 +1,24 @@
+import os
+import time
+import json
+import argparse
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-def get_transcript_links(course_url):
+def setup_driver():
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")  
+    return webdriver.Chrome(options=options)
+
+def scrape_transcripts(course_url, output_json="data/transcripts.json"):
     driver = setup_driver()
     wait = WebDriverWait(driver, 10)
     driver.get(course_url)
-
     print("📘 Opening course page...")
     time.sleep(3)
 
@@ -27,7 +42,6 @@ def get_transcript_links(course_url):
         transcripts_header = wait.until(
             EC.presence_of_element_located((By.XPATH, "//h3[text()='Transcripts']"))
         )
-        # driver.execute_script("arguments[0].scrollIntoView(true);", transcripts_header)
         transcripts_header.click()
         print("📂 Opened Transcripts section.")
     except Exception as e:
@@ -50,16 +64,17 @@ def get_transcript_links(course_url):
         entry = {}
 
         try:
-            # Optional: get course or week title from <span class="c-name">
+            # Get title if available
             try:
                 title_span = div.find_element(By.CSS_SELECTOR, "span.c-name")
                 entry["title"] = title_span.text.strip()
             except:
                 entry["title"] = f"Transcript {idx}"
+
             time.sleep(1)
+
             # Click language dropdown
             dropdown = div.find_element(By.CSS_SELECTOR, ".pseudo-input")
-            # driver.execute_script("arguments[0].scrollIntoView(true);", dropdown)
             dropdown.click()
             time.sleep(1)
 
@@ -78,14 +93,14 @@ def get_transcript_links(course_url):
                 print("⚠️ 'english-Verified' option not found.")
                 continue
 
-            # Now look for the drive link anchor
+            # Get Google Drive link
             try:
                 link = div.find_element(By.CSS_SELECTOR, "a[href*='drive.google.com']")
                 href = link.get_attribute("href")
                 print(f"🔗 Transcript link: {href}\n")
                 entry["link"] = href
                 results.append(entry)
-            except Exception as e:
+            except Exception:
                 print("⚠️ Google Drive link not found.\n")
 
         except Exception as e:
@@ -93,25 +108,21 @@ def get_transcript_links(course_url):
 
     driver.quit()
 
-    # Save results to JSON
+    # Save results
     if results:
-        with open("data/transcripts.json", "w", encoding="utf-8") as f:
+        os.makedirs(os.path.dirname(output_json), exist_ok=True)
+        with open(output_json, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
-        print(f"\n💾 Saved {len(results)} transcript links to transcripts.json")
+        print(f"\n💾 Saved {len(results)} transcript links to {output_json}")
     else:
         print("❌ No transcript links found to save.")
 
-def main():
-    args= get_args()
-    get_week_elements(setup_driver(), args.json)
-    get_transcript_links(args.course_url)
-    print("✅ All video links and transcript links saved to:", "data/video_links.json")
 def get_args():
-    parser = argparse.ArgumentParser(description="NPTEL YouTube Audio Scraper/Downloader.")
+    parser = argparse.ArgumentParser(description="NPTEL Transcript Scraper.")
     parser.add_argument("course_url", type=str, help="The NPTEL course URL to scrape.")
-    parser.add_argument("--json", type=str, default="data/video_links.json", help="Path to save the JSON file.")
+    parser.add_argument("--json", type=str, default="data/transcripts.json", help="Path to save the JSON file.")
     return parser.parse_args()
 
 if __name__ == "__main__":
-    main()
-    
+    args = get_args()
+    scrape_transcripts(args.course_url, args.json)
