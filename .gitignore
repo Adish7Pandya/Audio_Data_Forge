@@ -9,3 +9,4 @@ data/
 *.pyc
 __pycache__/
 01_scraper/venv/
+01_scraper/venv/
