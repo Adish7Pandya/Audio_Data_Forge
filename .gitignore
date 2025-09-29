@@ -1,0 +1,10 @@
+# Virtual environments
+venv/
+venv_name/
+
+# Data files (optional: keep only small data)
+data/
+
+# OS files
+*.pyc
+__pycache__/
