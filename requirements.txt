@@ -10,6 +10,7 @@ pydub
 soundfile
 noisereduce
 scipy
+librosa
 
 # Dashboard & Data Analysis
 pandas

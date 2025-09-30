@@ -36,8 +36,8 @@ python 06_dashboard/app.py
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Adish7Pandya/Ai4Bharat_Assignment.git
-cd Ai4Bharat_Assignment
+git clone hhttps://github.com/Adish7Pandya/Audio_Data_Forge.git
+cd Audio_Data_Forge
 ```
 
 ### 2. System Dependencies
@@ -174,22 +174,22 @@ data/
 
 ```
 ├── main.py                 # Main script to run the entire pipeline
-├── scraper/                # Scripts for scraping web data
+├── 01_scraper/                # Scripts for scraping web data
 │   ├── scrape_data.py
 │   └── scrape_transcript.py
-├── downloader/             # Scripts for downloading audio/text
+├── 02_downloader/             # Scripts for downloading audio/text
 │   └── download_data.py
-├── audio_preprocessor/     # Scripts and tools for audio processing
+├── 03_audio_preprocessor/     # Scripts and tools for audio processing
 │   ├── preprocess_audio.sh # Orchestrates audio processing steps
 │   ├── clean_audio.py      # For noise reduction and normalization
 │   ├── remove_trailing_audio.py
 │   └── rename_files.py
-├── text_preprocessor/      # Scripts for cleaning and normalizing text
+├── t04_ext_preprocessor/      # Scripts for cleaning and normalizing text
 │   ├── preprocess_transcript.py
 │   └── rename_files.py
-├── train_manifest/         # Scripts for creating the training manifest
+├── 05_train_manifest/         # Scripts for creating the training manifest
 │   └── create_manifest.py
-├── dashboard/              # Scripts, database, and assets for the dashboard
+├── 06_dashboard/              # Scripts, database, and assets for the dashboard
 │   ├── app.py              # The Streamlit dashboard web application
 │   ├── process_data.py
 │   ├── dashboard_data.db
@@ -203,7 +203,7 @@ data/
 │   ├── transcript_downloads/ # Raw downloaded transcripts
 │   ├── transcript_processed/ # Final, processed transcripts
 │   ├── transcripts.json
-│   └── video_links.json
+│   └── links.json
 ├── requirements.txt        # Python dependencies
 ├── README.md               # This file
 └── train_manifest.jsonl    # The final output manifest for training
