@@ -1,0 +1,18 @@
+# Core pipeline & scraping
+playwright
+yt-dlp
+requests
+PyPDF2
+num2words
+
+# Audio processing
+pydub
+soundfile
+noisereduce
+scipy
+
+# Dashboard & Data Analysis
+pandas
+dash
+dash_bootstrap_components
+plotly

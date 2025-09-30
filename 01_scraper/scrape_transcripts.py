@@ -1,128 +1,125 @@
 import os
-import time
 import json
 import argparse
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import asyncio
+from playwright.async_api import async_playwright
 
-def setup_driver():
-    options = Options()
-    options.add_argument("--headless=new")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")  
-    return webdriver.Chrome(options=options)
 
-def scrape_transcripts(course_url, output_json="data/transcripts.json"):
-    driver = setup_driver()
-    wait = WebDriverWait(driver, 10)
-    driver.get(course_url)
-    print("📘 Opening course page...")
-    time.sleep(3)
+async def scrape_transcripts(course_url, output_json="data/transcripts.json"):
+    os.makedirs(os.path.dirname(output_json), exist_ok=True)
 
-    # Click on the Downloads tab
-    print("🧭 Looking for 'Downloads' tab...")
-    tabs = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "tab")))
-    for tab in tabs:
-        if tab.text.strip().lower() == "downloads":
-            tab.click()
-            print("✅ Clicked on Downloads tab.")
-            break
-    else:
-        print("❌ 'Downloads' tab not found.")
-        driver.quit()
-        return
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
+        print("📘 Opening course page...")
+        await page.goto(course_url, timeout=60000)
 
-    time.sleep(2)
+        # Click Downloads tab
+        print("🧭 Looking for 'Downloads' tab...")
+        tabs = await page.query_selector_all(".tab")
+        clicked = False
+        for tab in tabs:
+            text = (await tab.inner_text()).strip().lower()
+            if text == "downloads":
+                await tab.click()
+                print("✅ Clicked on Downloads tab.")
+                clicked = True
+                break
 
-    # Click on the Transcripts section
-    try:
-        transcripts_header = wait.until(
-            EC.presence_of_element_located((By.XPATH, "//h3[text()='Transcripts']"))
-        )
-        transcripts_header.click()
-        print("📂 Opened Transcripts section.")
-    except Exception as e:
-        print(f"❌ Transcripts section not found: {e}")
-        driver.quit()
-        return
+        if not clicked:
+            print("❌ 'Downloads' tab not found.")
+            await browser.close()
+            return
 
-    time.sleep(2)
-
-    # Process all transcript entries
-    data_divs = wait.until(
-        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.d-data"))
-    )
-    print(f"📥 Found {len(data_divs)} transcript entries.\n")
-
-    results = []
-
-    for idx, div in enumerate(data_divs, start=1):
-        print(f"➡️ Processing transcript {idx}")
-        entry = {}
-
+        # Open Transcripts section
         try:
-            # Get title if available
-            try:
-                title_span = div.find_element(By.CSS_SELECTOR, "span.c-name")
-                entry["title"] = title_span.text.strip()
-            except:
-                entry["title"] = f"Transcript {idx}"
+            await page.wait_for_selector("h3:text('Transcripts')", timeout=10000)
+            transcripts_header = await page.query_selector("h3:text('Transcripts')")
+            await transcripts_header.click()
+            print("📂 Opened Transcripts section.")
+        except Exception as e:
+            print(f"❌ Transcripts section not found: {e}")
+            await browser.close()
+            return
 
-            time.sleep(1)
+        # Grab all transcript divs
+        await page.wait_for_selector("div.d-data")
+        data_divs = await page.query_selector_all("div.d-data")
+        print(f"📥 Found {len(data_divs)} transcript entries.\n")
 
-            # Click language dropdown
-            dropdown = div.find_element(By.CSS_SELECTOR, ".pseudo-input")
-            dropdown.click()
-            time.sleep(1)
+        results = []
 
-            # Click "english-Verified"
-            options = div.find_elements(By.CSS_SELECTOR, "ul.pseudo-options li")
-            clicked = False
-            for opt in options:
-                if "english-verified" in opt.text.strip().lower():
-                    opt.click()
-                    print("✅ Selected 'english-Verified'")
-                    clicked = True
-                    time.sleep(1)
-                    break
+        for idx, div in enumerate(data_divs, start=1):
+            print(f"➡️ Processing transcript {idx}")
+            entry = {}
 
-            if not clicked:
-                print("⚠️ 'english-Verified' option not found.")
+            # Title
+            title_span = await div.query_selector("span.c-name")
+            if title_span:
+                entry["title"] = (await title_span.inner_text()).strip()
+            else:
+                print(f"⚠️ Skipping transcript {idx} (no title found)")
                 continue
 
-            # Get Google Drive link
+            # Open language dropdown
             try:
-                link = div.find_element(By.CSS_SELECTOR, "a[href*='drive.google.com']")
-                href = link.get_attribute("href")
-                print(f"🔗 Transcript link: {href}\n")
-                entry["link"] = href
+                dropdown = await div.query_selector(".pseudo-input")
+                if dropdown:
+                    await dropdown.click()
+                    await asyncio.sleep(0.5)
+
+                    options = await div.query_selector_all("ul.pseudo-options li")
+                    clicked = False
+                    for opt in options:
+                        text = (await opt.inner_text()).strip().lower()
+                        if "english-verified" in text:
+                            await opt.click()
+                            print("✅ Selected 'english-Verified'")
+                            clicked = True
+                            break
+                    if not clicked:
+                        print("⚠️ 'english-Verified' option not found.")
+                        continue
+            except:
+                print("⚠️ No dropdown found, skipping.")
+                continue
+
+            # Transcript link
+            try:
+                link = await div.query_selector("a[href*='drive.google.com']")
+                if link:
+                    href = await link.get_attribute("href")
+                    entry["link"] = href
+                    print(f"🔗 Transcript link: {href}\n")
+                else:
+                    print("⚠️ Google Drive link not found.\n")
+                    continue
+            except Exception as e:
+                print(f"⚠️ Error fetching link: {e}")
+                continue
+
+            # Only save if link exists
+            if "link" in entry:
                 results.append(entry)
-            except Exception:
-                print("⚠️ Google Drive link not found.\n")
 
-        except Exception as e:
-            print(f"⚠️ Error processing transcript {idx}: {e}\n")
+        await browser.close()
 
-    driver.quit()
+        # Save results
+        if results:
+            with open(output_json, "w", encoding="utf-8") as f:
+                json.dump(results, f, indent=2, ensure_ascii=False)
+            print(f"\n💾 Saved {len(results)} transcript links to {output_json}")
+        else:
+            print("❌ No transcript links found to save.")
 
-    # Save results
-    if results:
-        os.makedirs(os.path.dirname(output_json), exist_ok=True)
-        with open(output_json, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2, ensure_ascii=False)
-        print(f"\n💾 Saved {len(results)} transcript links to {output_json}")
-    else:
-        print("❌ No transcript links found to save.")
 
 def get_args():
-    parser = argparse.ArgumentParser(description="NPTEL Transcript Scraper.")
+    parser = argparse.ArgumentParser(description="NPTEL Transcript Scraper (Playwright).")
     parser.add_argument("course_url", type=str, help="The NPTEL course URL to scrape.")
     parser.add_argument("--json", type=str, default="data/transcripts.json", help="Path to save the JSON file.")
     return parser.parse_args()
 
+
 if __name__ == "__main__":
     args = get_args()
-    scrape_transcripts(args.course_url, args.json)
+    asyncio.run(scrape_transcripts(args.course_url, args.json))
